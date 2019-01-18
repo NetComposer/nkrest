@@ -1,0 +1,13 @@
+{application, nkserver_rest, [
+    {description, "Netcomposer REST Package"},
+    {vsn, "develop"},
+    {modules, []},
+    {registered, []},
+    {mod, {nkserver_rest_app, []}},
+    {applications, [
+        nkpacket,
+        nkserver
+    ]},
+    {env, [
+    ]}
+]}.
