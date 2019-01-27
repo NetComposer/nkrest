@@ -19,13 +19,13 @@
 %% -------------------------------------------------------------------
 
 %% @doc Default callbacks for plugin definitions
--module(nkserver_rest_plugin).
+-module(nkrest_plugin).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -export([plugin_deps/0, plugin_config/3, plugin_cache/3,
           plugin_start/3, plugin_update/4, plugin_stop/3]).
 
 
--include("nkserver_rest.hrl").
+-include("nkrest.hrl").
 -include_lib("nkserver/include/nkserver.hrl").
 -include_lib("nkpacket/include/nkpacket.hrl").
 
@@ -108,13 +108,13 @@ plugin_update(SrvId, NewConfig, OldConfig, Service) ->
 
 %% @private
 get_listen(SrvId, #{url:=Url}=Config, _Service) ->
-    ResolveOpts = #{resolve_type=>listen, protocol=>nkserver_rest_protocol},
+    ResolveOpts = #{resolve_type=>listen, protocol=>nkrest_protocol},
     ConfigOpts = maps:get(opts, Config, #{}),
     case nkpacket_resolve:resolve(Url, ResolveOpts) of
         {ok, Conns} ->
             Debug = maps:get(debug, Config, []),
             Opts = ConfigOpts#{
-                id => {nkserver_rest, SrvId},
+                id => {nkrest, SrvId},
                 class => {?PACKAGE_CLASS_REST, SrvId},
                 debug => lists:member(nkpacket, Debug),
                 get_headers => [<<"user-agent">>],
@@ -130,7 +130,7 @@ get_listen(SrvId, #{url:=Url}=Config, _Service) ->
 do_get_listen([], _Opts, Acc) ->
     {ok, Acc};
 
-do_get_listen([#nkconn{protocol=nkserver_rest_protocol}=Conn|Rest], Opts, Acc) ->
+do_get_listen([#nkconn{protocol=nkrest_protocol}=Conn|Rest], Opts, Acc) ->
     #nkconn{opts=ConnOpts} = Conn,
     Opts2 = maps:merge(ConnOpts, Opts),
     Opts3 = Opts2#{

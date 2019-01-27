@@ -1,5 +1,5 @@
--ifndef(NKSERVER_REST_HRL_).
--define(NKSERVER_REST_HRL_, 1).
+-ifndef(NKREST_HRL_).
+-define(NKREST_HRL_, 1).
 
 %% ===================================================================
 %% Defines
@@ -10,4 +10,3 @@
 -define(PACKAGE_CLASS_REST, <<"Rest">>).
 
 -endif.
-

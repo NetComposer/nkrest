@@ -19,16 +19,16 @@
 %% -------------------------------------------------------------------
 
 %% @doc NkSERVER
--module(nkserver_rest_app).
+-module(nkrest_app).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -behaviour(application).
 
 -export([start/0, start/2, stop/1]).
 -export([get/1, get/2, put/2, del/1]).
 
--include("nkserver_rest.hrl").
+-include("nkrest.hrl").
 
--define(APP, nkserver_rest).
+-define(APP, nkrest).
 -compile({no_auto_import, [get/1, put/2]}).
 
 %% ===================================================================
@@ -49,10 +49,10 @@ start(_Type, _Args) ->
     },
     case nklib_config:load_env(?APP, Syntax) of
         {ok, _} ->
-            {ok, Pid} = nkserver_rest_sup:start_link(),
+            {ok, Pid} = nkrest_sup:start_link(),
             {ok, Vsn} = application:get_key(nkserver, vsn),
             lager:info("NkSERVER REST v~s has started.", [Vsn]),
-            nkserver_util:register_package_class(<<"Rest">>, nkserver_rest),
+            nkserver_util:register_package_class(<<"Rest">>, nkrest),
             {ok, Pid};
         {error, Error} ->
             lager:error("Error parsing config: ~p", [Error]),

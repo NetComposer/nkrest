@@ -23,13 +23,13 @@
 %% 'nkserver_all_srvs_sup'
 %% Each started service will start a supervisor under it (see nkserver_srv_sup)
 
--module(nkserver_rest_sup).
+-module(nkrest_sup).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -behaviour(supervisor).
 
 -export([init/1, start_link/0]).
 
--include("nkserver_rest.hrl").
+-include("nkrest.hrl").
 
 %% @private
 start_link() ->

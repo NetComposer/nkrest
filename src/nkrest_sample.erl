@@ -19,7 +19,7 @@
 %% -------------------------------------------------------------------
 
 %% @doc
--module(nkserver_rest_sample).
+-module(nkrest_sample).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
 %%-define(WS, "wss://127.0.0.1:9010/ws").
@@ -44,7 +44,7 @@
 
 %% @doc Starts the service
 start() ->
-    {ok, _} = nkserver_rest:start_link(?MODULE, #{
+    {ok, _} = nkrest:start_link(?MODULE, #{
         url => "https://node:9010/test1, wss:node:9010/test1/ws;idle_timeout=5000",
         opts => #{
             cowboy_opts => #{max_headers=>100}  % To test in nkpacket
@@ -55,7 +55,7 @@ start() ->
 
 %% @doc Stops the service
 stop() ->
-    nkserver_rest:stop(?MODULE).
+    nkrest:stop(?MODULE).
 
 
 test1() ->
@@ -131,11 +131,11 @@ request(<<"GET">>, [], _Req, _State) ->
 
 request(<<"GET">>, _Paths, _Req, _State) ->
     lager:error("NKLOG STATIC ~p", [_Paths]),
-    {cowboy_static, {priv_dir, nkserver_rest, "/www"}};
+    {cowboy_static, {priv_dir, nkrest, "/www"}};
 
 request(<<"POST">>, [<<"test-a">>], #{content_type:=CT}=Req, _State) ->
-    {ok, Body, Req2} = nkserver_rest_http:get_body(Req, #{parse=>true}),
-    Qs = nkserver_rest_http:get_qs(Req),
+    {ok, Body, Req2} = nkrest_http:get_body(Req, #{parse=>true}),
+    Qs = nkrest_http:get_qs(Req),
     Reply = nklib_json:encode(#{qs=>maps:from_list(Qs), ct=>CT, body=>Body}),
     {http, 200, #{<<"header1">> => 1}, Reply, Req2};
 

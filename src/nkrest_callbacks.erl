@@ -19,18 +19,18 @@
 %% -------------------------------------------------------------------
 
 %% @doc Default plugin callbacks
--module(nkserver_rest_callbacks).
+-module(nkrest_callbacks).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -export([msg/1]).
 -export([request/4]).
 -export([ws_init/3, ws_frame/2, ws_handle_call/3, ws_handle_cast/2, ws_handle_info/2,
          ws_terminate/2]).
 
--include("nkserver_rest.hrl").
+-include("nkrest.hrl").
 
 
 -define(DEBUG(Txt, Args),
-    case erlang:get(nkserver_rest_debug) of
+    case erlang:get(nkrest_debug) of
         true -> ?LLOG(debug, Txt, Args);
         _ -> ok
     end).
@@ -55,13 +55,13 @@ msg(_)   		                    -> continue.
 %% REST Callbacks
 %% ===================================================================
 
--type user_state() :: nkserver_rest:user_state().
+-type user_state() :: nkrest:user_state().
 -type continue() :: nkserver_callbacks:continue().
 -type id() :: nkserver:module_id().
--type http_method() :: nkserver_rest_http:method().
--type http_path() :: nkserver_rest_http:path().
--type http_req() :: nkserver_rest_http:req().
--type http_reply() :: nkserver_rest_http:http_reply().
+-type http_method() :: nkrest_http:method().
+-type http_path() :: nkrest_http:path().
+-type http_req() :: nkrest_http:req().
+-type http_reply() :: nkrest_http:http_reply().
 -type nkport() :: nkpacket:nkport().
 
 
@@ -78,7 +78,7 @@ request(Method, Path, #{srv:=SrvId}=Req, _State) ->
     {http, 404, [], <<"NkSERVER REST: Path Not Found">>, Req}.
 
 %%request(SrvId, Method, Path, #{srv:=SrvId}=Req) ->
-%%    case nkserver:get_plugin_config(SrvId, nkserver_rest, requestCallBack) of
+%%    case nkserver:get_plugin_config(SrvId, nkrest, requestCallBack) of
 %%        #{class:=luerl, luerl_fun:=_}=CB ->
 %%            case nkserver_luerl_instance:spawn_callback_spec(SrvId, CB) of
 %%                {ok, Pid} ->
@@ -161,7 +161,7 @@ ws_terminate(_Reason, State) ->
 
 %%process_luerl_req(PackageId, CBSpec, Pid, Req) ->
 %%    Start = nklib_util:l_timestamp(),
-%%    case nkserver_rest_http:make_req_ext(PackageId, Req) of
+%%    case nkrest_http:make_req_ext(PackageId, Req) of
 %%        {ok, ReqInfo, Req2} ->
 %%            ?DEBUG("script spawn time: ~pusecs", [nklib_util:l_timestamp() - Start]),
 %%            ?DEBUG("calling info: ~p", [ReqInfo]),
@@ -169,7 +169,7 @@ ws_terminate(_Reason, State) ->
 %%                nkserver_luerl_instance:call_callback(Pid, CBSpec, [ReqInfo])
 %%            of
 %%                {ok, [Reply]} ->
-%%                    nkserver_rest_http:reply_req_ext(Reply, Req2);
+%%                    nkrest_http:reply_req_ext(Reply, Req2);
 %%                {ok, Other} ->
 %%                    ?LLOG(notice, "invalid reply from script ~s: ~p", [PackageId, Other]),
 %%                    {http, 500, [], "NkSERVER REST: Reply response error", Req2};

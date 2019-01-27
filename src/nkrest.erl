@@ -18,14 +18,14 @@
 %%
 %% -------------------------------------------------------------------
 
--module(nkserver_rest).
+-module(nkrest).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
 -export([start_link/2, get_sup_spec/2]).
 -export([stop/1, update/2]).
 -export_type([id/0, config/0, user_state/0]).
 
--include("nkserver_rest.hrl").
+-include("nkrest.hrl").
 
 
 %% ===================================================================
@@ -42,7 +42,7 @@
 %% Public
 %% ===================================================================
 
-%% @doc Starts a new nkserver_rest_http service
+%% @doc Starts a new nkrest_http service
 -spec start_link(id(), config()) ->
     {ok, pid()} | {error, term()}.
 
@@ -69,7 +69,7 @@ update(Id, Config) ->
     Config2 = nklib_util:to_map(Config),
     Config3 = case Config2 of
         #{plugins:=Plugins} ->
-            Config2#{plugins:=[nkserver_rest|Plugins]};
+            Config2#{plugins:=[nkrest|Plugins]};
         _ ->
             Config2
     end,

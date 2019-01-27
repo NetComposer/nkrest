@@ -19,7 +19,7 @@
 %% -------------------------------------------------------------------
 
 %% @doc
--module(nkserver_rest_http).
+-module(nkrest_http).
 -export([get_body/2, get_headers/1, get_qs/1, get_basic_auth/1]).
 -export([stream_start/3, stream_body/2, stream_stop/1]).
 -export([get_accept/1, get_full_path/1, get_external_url/1]).
@@ -31,7 +31,7 @@
 
 
 -define(DEBUG(Txt, Args, State),
-    case erlang:get(nkserver_rest_debug) of
+    case erlang:get(nkrest_debug) of
         true -> ?LLOG(debug, Txt, Args, State);
         _ -> ok
     end).
@@ -42,7 +42,7 @@
 
 -include_lib("nkserver/include/nkserver.hrl").
 -include_lib("nkpacket/include/nkpacket.hrl").
--include("nkserver_rest.hrl").
+-include("nkrest.hrl").
 
 
 %% ===================================================================
@@ -319,7 +319,7 @@ init(Paths, CowReq, Env, NkPort) ->
         (nklib_util:to_host(Ip))/binary, ":",
         (to_bin(Port))/binary
     >>,
-    {ok, _Class, {nkserver_rest, SrvId}} = nkpacket:get_id(NkPort),
+    {ok, _Class, {nkrest, SrvId}} = nkpacket:get_id(NkPort),
     Method = cowboy_req:method(CowReq),
     {ok, ExtUrl} = nkpacket:get_external_url(NkPort),
     {ok, UserState} = nkpacket:get_user_state(NkPort),
@@ -371,9 +371,9 @@ terminate(_Reason, _Req, _Opts) ->
 
 %% @private
 set_debug(#{srv:=SrvId}=Req) ->
-    AllDebug = nkserver:get_plugin_config(SrvId, nkserver_rest, debug),
+    AllDebug = nkserver:get_plugin_config(SrvId, nkrest, debug),
     Debug = lists:member(http, AllDebug),
-    put(nkserver_rest_debug, Debug),
+    put(nkrest_debug, Debug),
     ?DEBUG("debug mode activated", [], Req).
 
 

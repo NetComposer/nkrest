@@ -19,7 +19,7 @@
 %% -------------------------------------------------------------------
 
 %% @doc
--module(nkserver_rest_protocol).
+-module(nkrest_protocol).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 
 -export([transports/1, default_port/1]).
@@ -29,7 +29,7 @@
 -export([http_init/4]).
 
 -define(DEBUG(Txt, Args, State),
-    case erlang:get(nkserver_rest_debug) of
+    case erlang:get(nkrest_debug) of
         true -> ?LLOG(debug, Txt, Args, State);
         _ -> ok
     end).
@@ -70,7 +70,7 @@ default_port(wss) -> 443.
     ok | {error, term()}.
 
 send(Pid, Data) ->
-    gen_server:call(Pid, {nkserver_rest_send, Data}).
+    gen_server:call(Pid, {nkrest_send, Data}).
 
 
 %% @doc Send a command and don't wait for a response
@@ -78,12 +78,12 @@ send(Pid, Data) ->
     ok | {error, term()}.
 
 send_async(Pid, Data) ->
-    gen_server:cast(Pid, {nkserver_rest_send, Data}).
+    gen_server:cast(Pid, {nkrest_send, Data}).
 
 
 %% @doc
 stop(Pid) ->
-    gen_server:cast(Pid, nkserver_rest_stop).
+    gen_server:cast(Pid, nkrest_stop).
 
 
 %% ===================================================================
@@ -101,7 +101,7 @@ stop(Pid) ->
     {ok, #state{}}.
 
 conn_init(NkPort) ->
-    {ok, _Class, {nkserver_rest, SrvId}} = nkpacket:get_id(NkPort),
+    {ok, _Class, {nkrest, SrvId}} = nkpacket:get_id(NkPort),
     {ok, Remote} = nkpacket:get_remote_bin(NkPort),
     State = #state{srv=SrvId, remote=Remote},
     set_debug(NkPort, State),
@@ -146,7 +146,7 @@ conn_encode({json, Term}, _NkPort) ->
 -spec conn_handle_call(term(), {pid(), term()}, nkpacket:nkport(), #state{}) ->
     {ok, #state{}} | {stop, Reason::term(), #state{}}.
 
-conn_handle_call({nkserver_rest_send, Data}, From, NkPort, State) ->
+conn_handle_call({nkrest_send, Data}, From, NkPort, State) ->
     case do_send(Data, NkPort, State) of
         {ok, State2} ->
             gen_server:reply(From, ok),
@@ -162,10 +162,10 @@ conn_handle_call(Msg, From, _NkPort, State) ->
 -spec conn_handle_cast(term(), nkpacket:nkport(), #state{}) ->
     {ok, #state{}} | {stop, Reason::term(), #state{}}.
 
-conn_handle_cast({nkserver_rest_send, Data}, NkPort, State) ->
+conn_handle_cast({nkrest_send, Data}, NkPort, State) ->
     do_send(Data, NkPort, State);
 
-conn_handle_cast(nkserver_rest_stop, _NkPort, State) ->
+conn_handle_cast(nkrest_stop, _NkPort, State) ->
     {stop, normal, State};
 
 conn_handle_cast(Msg, _NkPort, State) ->
@@ -195,7 +195,7 @@ conn_stop(Reason, _NkPort, State) ->
 %% See nkpacket_protocol
 
 http_init(Paths, Req, Env, NkPort) ->
-    nkserver_rest_http:init(Paths, Req, Env, NkPort).
+    nkrest_http:init(Paths, Req, Env, NkPort).
 
 
 
@@ -221,7 +221,7 @@ call_rest_frame(Frame, NkPort, #state{srv=SrvId, user_state=UserState}=State) ->
 %% @private
 set_debug(NkPort, State) ->
     Debug = nkpacket:get_debug(NkPort) == true,
-    put(nkserver_rest_debug, Debug),
+    put(nkrest_debug, Debug),
     ?DEBUG("debug system activated", [], State).
 
 

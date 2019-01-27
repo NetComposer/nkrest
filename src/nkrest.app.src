@@ -1,9 +1,9 @@
-{application, nkserver_rest, [
+{application, nkrest, [
     {description, "NkSERVER REST Package"},
     {vsn, "develop"},
     {modules, []},
     {registered, []},
-    {mod, {nkserver_rest_app, []}},
+    {mod, {nkrest_app, []}},
     {applications, [
         nkpacket,
         nkserver
