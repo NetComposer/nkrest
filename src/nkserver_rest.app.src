@@ -1,5 +1,5 @@
 {application, nkserver_rest, [
-    {description, "Netcomposer REST Package"},
+    {description, "NkSERVER REST Package"},
     {vsn, "develop"},
     {modules, []},
     {registered, []},

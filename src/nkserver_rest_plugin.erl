@@ -44,6 +44,7 @@ plugin_config(SrvId, Config, #{class:=?PACKAGE_CLASS_REST}=Service) ->
         url => binary,
         opts => nkpacket_syntax:safe_syntax(),
         debug => {list, {atom, [ws, http, nkpacket]}},
+        user_state => any,
         module => binary,
         module_opts => #{
             requestCallback => any,
@@ -116,7 +117,8 @@ get_listen(SrvId, #{url:=Url}=Config, _Service) ->
                 id => {nkserver_rest, SrvId},
                 class => {?PACKAGE_CLASS_REST, SrvId},
                 debug => lists:member(nkpacket, Debug),
-                get_headers => [<<"user-agent">>]
+                get_headers => [<<"user-agent">>],
+                user_state => maps:get(user_state, Config, undefined)
             },
             do_get_listen(Conns, Opts, []);
         {error, Error} ->

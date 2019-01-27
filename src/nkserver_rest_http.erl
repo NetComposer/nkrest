@@ -322,6 +322,7 @@ init(Paths, CowReq, Env, NkPort) ->
     {ok, _Class, {nkserver_rest, SrvId}} = nkpacket:get_id(NkPort),
     Method = cowboy_req:method(CowReq),
     {ok, ExtUrl} = nkpacket:get_external_url(NkPort),
+    {ok, UserState} = nkpacket:get_user_state(NkPort),
     Req = #{
         srv => SrvId,
         method => Method,
@@ -333,7 +334,7 @@ init(Paths, CowReq, Env, NkPort) ->
     },
     set_debug(Req),
     ?DEBUG("received '~p' (~s) from ~s", [Method, Paths, Peer], Req),
-    Res = ?CALL_SRV(SrvId, request, [Method, Paths, Req]),
+    Res = ?CALL_SRV(SrvId, request, [Method, Paths, Req, UserState]),
     ?DEBUG("request processing time: ~pusecs", [nklib_util:l_timestamp()-Start], Req),
     case Res of
         {http, Code, Hds, Body, #{cowboy_req:=CowReq2}} ->

@@ -22,7 +22,7 @@
 -module(nkserver_rest_callbacks).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -export([msg/1]).
--export([request/3]).
+-export([request/4]).
 -export([ws_init/3, ws_frame/2, ws_handle_call/3, ws_handle_cast/2, ws_handle_info/2,
          ws_terminate/2]).
 
@@ -55,7 +55,7 @@ msg(_)   		                    -> continue.
 %% REST Callbacks
 %% ===================================================================
 
--type state() :: nkapi_server:user_state().
+-type user_state() :: nkserver_rest:user_state().
 -type continue() :: nkserver_callbacks:continue().
 -type id() :: nkserver:module_id().
 -type http_method() :: nkserver_rest_http:method().
@@ -66,13 +66,13 @@ msg(_)   		                    -> continue.
 
 
 %% @doc called when a new http request has been received
--spec request(http_method(), http_path(), http_req()) ->
+-spec request(http_method(), http_path(), http_req(), user_state()) ->
     http_reply() |
     {redirect, Path::binary(), http_req()} |
     {cowboy_static, cowboy_static:opts()} |
     {cowboy_rest, Callback::module(), State::term()}.
 
-request(Method, Path, #{srv:=SrvId}=Req) ->
+request(Method, Path, #{srv:=SrvId}=Req, _State) ->
     #{peer:=Peer} = Req,
     ?LLOG(debug, "path not found (~p, ~s): ~p from ~s", [SrvId, Method, Path, Peer]),
     {http, 404, [], <<"NkSERVER REST: Path Not Found">>, Req}.
@@ -101,16 +101,16 @@ request(Method, Path, #{srv:=SrvId}=Req) ->
 
 
 %% @doc Called when a new connection starts
--spec ws_init(id(), nkport(), state()) ->
-    {ok, state()} | {stop, term()}.
+-spec ws_init(id(), nkport(), user_state()) ->
+    {ok, user_state()} | {stop, term()}.
 
 ws_init(_Id, _NkPort, State) ->
     {ok, State}.
 
 
 %% @doc Called when a new connection starts
--spec ws_frame({text, binary()}|{binary, binary()}, state()) ->
-    {ok, state()} | {reply, Msg, state()}
+-spec ws_frame({text, binary()}|{binary, binary()}, user_state()) ->
+    {ok, user_state()} | {reply, Msg, user_state()}
     when Msg :: {text, iolist()} | {binary, iolist()} | {json, term()}.
 
 ws_frame(_Frame, State) ->
@@ -119,8 +119,8 @@ ws_frame(_Frame, State) ->
 
 
 %% @doc Called when the process receives a handle_call/3.
--spec ws_handle_call(term(), {pid(), reference()}, state()) ->
-    {ok, state()} | continue().
+-spec ws_handle_call(term(), {pid(), reference()}, user_state()) ->
+    {ok, user_state()} | continue().
 
 ws_handle_call(Msg, _From, State) ->
     ?LLOG(error, "unexpected call ~p", [Msg]),
@@ -128,8 +128,8 @@ ws_handle_call(Msg, _From, State) ->
 
 
 %% @doc Called when the process receives a handle_cast/3.
--spec ws_handle_cast(term(), state()) ->
-    {ok, state()} | continue().
+-spec ws_handle_cast(term(), user_state()) ->
+    {ok, user_state()} | continue().
 
 ws_handle_cast(Msg, State) ->
     ?LLOG(error, "unexpected cast ~p", [Msg]),
@@ -137,8 +137,8 @@ ws_handle_cast(Msg, State) ->
 
 
 %% @doc Called when the process receives a handle_info/3.
--spec ws_handle_info(term(), state()) ->
-    {ok, state()} | continue().
+-spec ws_handle_info(term(), user_state()) ->
+    {ok, user_state()} | continue().
 
 ws_handle_info(Msg, State) ->
     ?LLOG(error, "unexpected cast ~p", [Msg]),
@@ -146,8 +146,8 @@ ws_handle_info(Msg, State) ->
 
 
 %% @doc Called when a service is stopped
--spec ws_terminate(term(), state()) ->
-    {ok, state()}.
+-spec ws_terminate(term(), user_state()) ->
+    {ok, user_state()}.
 
 ws_terminate(_Reason, State) ->
     {ok, State}.

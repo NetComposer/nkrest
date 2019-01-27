@@ -23,6 +23,7 @@
 
 -export([start_link/2, get_sup_spec/2]).
 -export([stop/1, update/2]).
+-export_type([id/0, config/0, user_state/0]).
 
 -include("nkserver_rest.hrl").
 
@@ -35,7 +36,7 @@
 
 -type config() :: map().
 
-
+-type user_state() :: term().
 
 %% ===================================================================
 %% Public
