@@ -141,7 +141,7 @@ ws_handle_cast(Msg, State) ->
     {ok, user_state()} | continue().
 
 ws_handle_info(Msg, State) ->
-    ?LLOG(error, "unexpected cast ~p", [Msg]),
+    ?LLOG(error, "unexpected info ~p", [Msg]),
     {ok, State}.
 
 
