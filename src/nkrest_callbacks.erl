@@ -78,7 +78,7 @@ request(Method, Path, #{srv:=SrvId}=Req, _State) ->
     {http, 404, [], <<"NkSERVER REST: Path Not Found">>, Req}.
 
 %%request(SrvId, Method, Path, #{srv:=SrvId}=Req) ->
-%%    case nkserver:get_plugin_config(SrvId, nkrest, requestCallBack) of
+%%    case nkserver:get_cached_config(SrvId, nkrest, requestCallBack) of
 %%        #{class:=luerl, luerl_fun:=_}=CB ->
 %%            case nkserver_luerl_instance:spawn_callback_spec(SrvId, CB) of
 %%                {ok, Pid} ->

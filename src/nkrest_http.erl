@@ -20,9 +20,10 @@
 
 %% @doc
 -module(nkrest_http).
--export([get_body/2, get_headers/1, get_qs/1, get_basic_auth/1]).
--export([stream_start/3, stream_body/2, stream_stop/1]).
+-export([get_headers/1, get_qs/1, get_basic_auth/1, get_ct/1]).
 -export([get_accept/1, get_full_path/1, get_external_url/1]).
+-export([get_body/2, iter_body/4]).
+-export([stream_start/3, stream_body/2, stream_stop/1]).
 -export([reply_json/2]).
 -export([init/4, terminate/3]).
 -export_type([method/0, reply/0, code/0, headers/0, body/0, req/0, path/0, http_qs/0]).
@@ -84,6 +85,67 @@
 %% ===================================================================
 
 %% @doc
+-spec get_headers(req()) ->
+    headers().
+
+get_headers(#{cowboy_req:=CowReq}) ->
+    cowboy_req:headers(CowReq).
+
+
+%% @doc
+-spec get_qs(req()) ->
+    http_qs().
+
+get_qs(#{cowboy_req:=CowReq}) ->
+    cowboy_req:parse_qs(CowReq).
+
+
+%% @doc
+-spec get_basic_auth(req()) ->
+    {ok, binary(), binary()} | undefined.
+
+get_basic_auth(#{cowboy_req:=CowReq}) ->
+    case cowboy_req:parse_header(<<"authorization">>, CowReq) of
+        {basic, User, Pass} ->
+            {ok, User, Pass};
+        _ ->
+            undefined
+    end.
+
+
+%% @doc
+-spec get_ct(req()) ->
+    {binary(), binary(), list()}.
+
+get_ct(#{cowboy_req:=CowReq}) ->
+    cowboy_req:parse_header(<<"content-type">>, CowReq).
+
+
+%% @doc
+-spec get_accept(req()) ->
+    binary().
+
+get_accept(#{cowboy_req:=CowReq}) ->
+    cowboy_req:parse_header(<<"accept">>, CowReq).
+
+
+%% @doc
+-spec get_full_path(req()) ->
+    binary().
+
+get_full_path(#{cowboy_req:=CowReq}) ->
+    cowboy_req:path(CowReq).
+
+
+%% @doc
+-spec get_external_url(req()) ->
+    binary().
+
+get_external_url(#{external_url:=Url}) ->
+    Url.
+
+
+%% @doc
 -spec get_body(req(), #{max_size=>integer(), parse=>boolean(), allow_list=>boolean()}) ->
     {ok, binary(), req()} | {error, term()}.
 
@@ -142,48 +204,38 @@ get_body_parse(_, Body, Req, _Opts) ->
 
 
 
--spec get_headers(req()) ->
-    headers().
-
-get_headers(#{cowboy_req:=CowReq}) ->
-    cowboy_req:headers(CowReq).
+-type iter_function() :: fun((binary(), term()) -> term()).
+-type iter_opts() :: #{max_chunk_size=>integer(), max_chunk_time=>integer()}.
 
 
 %% @doc
--spec get_qs(req()) ->
-    http_qs().
+-spec iter_body(req(), iter_function(), term(), iter_opts()) ->
+    {term(), req()}.
 
-get_qs(#{cowboy_req:=CowReq}) ->
-    cowboy_req:parse_qs(CowReq).
-
-
-%% @doc
--spec get_accept(req()) ->
-    binary().
-
-get_accept(#{cowboy_req:=CowReq}) ->
-    cowboy_req:parse_header(<<"accept">>, CowReq).
-
-
-%% @doc
--spec get_full_path(req()) ->
-    binary().
-
-get_full_path(#{cowboy_req:=CowReq}) ->
-    cowboy_req:path(CowReq).
-
-
-%% @doc
--spec get_basic_auth(req()) ->
-    {ok, binary(), binary()} | undefined.
-
-get_basic_auth(#{cowboy_req:=CowReq}) ->
-    case cowboy_req:parse_header(<<"authorization">>, CowReq) of
-        {basic, User, Pass} ->
-            {ok, User, Pass};
-        _ ->
-            undefined
+iter_body(#{cowboy_req:=CowReq}=Req, Opts, Fun, Acc0) ->
+    case do_iter_body(CowReq, Opts, Fun, Acc0) of
+        {ok, Result, CowReq2} ->
+            {ok, Result, Req#{cowboy_req:=CowReq2}};
+        {error, Error, CowReq2} ->
+            {error, Error, Req#{cowboy_req:=CowReq2}}
     end.
+
+
+%% @private
+do_iter_body(CowReq, Opts, Fun, Acc) ->
+    MaxChunkSize = maps:get(max_chunk_size, Opts, 8*1024*1024),
+    MaxChunkTime = maps:get(max_chunk_time, Opts, 15000),
+    Opts2 = #{length => MaxChunkSize, period => MaxChunkTime},
+    {Res, Data, CowReq2} = cowboy_req:read_body(CowReq, Opts2),
+    case Fun(Data, Acc) of
+        {ok, Acc2} when Res==ok ->
+            {ok, Acc2, CowReq2};
+        {ok, Acc2} when Res==more ->
+            ?MODULE:do_iter_body(CowReq2, Opts, Fun, Acc2);
+        {error, Error} ->
+            {error, Error, CowReq2}
+    end.
+
 
 %%
 %%%% @private
@@ -297,12 +349,6 @@ reply_json({error, Error}, #{srv:=SrvId}) ->
     {http, 200, Hds, Body}.
 
 
-%% @doc
--spec get_external_url(req()) ->
-    binary().
-
-get_external_url(#{external_url:=Url}) ->
-    Url.
 
 
 %% ===================================================================
@@ -325,6 +371,7 @@ init(Paths, CowReq, Env, NkPort) ->
     {ok, UserState} = nkpacket:get_user_state(NkPort),
     Req = #{
         srv => SrvId,
+        start => Start,
         method => Method,
         path => Paths,
         peer => Peer,
@@ -371,7 +418,7 @@ terminate(_Reason, _Req, _Opts) ->
 
 %% @private
 set_debug(#{srv:=SrvId}=Req) ->
-    AllDebug = nkserver:get_plugin_config(SrvId, nkrest, debug),
+    AllDebug = nkserver:get_cached_config(SrvId, nkrest, debug),
     Debug = lists:member(http, AllDebug),
     put(nkrest_debug, Debug),
     ?DEBUG("debug mode activated", [], Req).
