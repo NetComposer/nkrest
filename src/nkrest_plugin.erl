@@ -35,7 +35,7 @@
 
 
 plugin_deps() ->
-	[nkserver].
+	[nkserver, nkserver_ot].
 
 
 %% @doc
@@ -58,8 +58,8 @@ plugin_config(SrvId, Config, #{class:=?PACKAGE_CLASS_REST}=Service) ->
         },
         '__mandatory' => [url]
     },
-    case nklib_syntax:parse(Config, Syntax) of
-        {ok, Config2, _} ->
+    case nkserver_util:parse_config(Config, Syntax) of
+        {ok, Config2} ->
             case get_listen(SrvId, Config2, Service) of
                 {ok, _Conns} ->
                     {ok, Config2};

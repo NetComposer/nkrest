@@ -369,6 +369,16 @@ init(Paths, CowReq, Env, NkPort) ->
     Method = cowboy_req:method(CowReq),
     {ok, ExtUrl} = nkpacket:get_external_url(NkPort),
     {ok, UserState} = nkpacket:get_user_state(NkPort),
+    FullPath = cowboy_req:path(CowReq),
+    CT = cowboy_req:header(<<"content-type">>, CowReq),
+    SpanName = <<"NkREST ", Method/binary, " ", FullPath/binary>>,
+    Span1 = nkserver_ot:span(SrvId, SpanName),
+    Span2 = nkserver_ot:tags(Span1, #{
+        <<"method">> => Method,
+        <<"path">> => FullPath,
+        <<"peer">> => Peer,
+        <<"content_type">> => CT
+    }),
     Req = #{
         srv => SrvId,
         start => Start,
@@ -376,7 +386,8 @@ init(Paths, CowReq, Env, NkPort) ->
         path => Paths,
         peer => Peer,
         external_url => ExtUrl,
-        content_type => cowboy_req:header(<<"content-type">>, CowReq),
+        content_type => CT,
+        span => Span2,
         cowboy_req => CowReq
     },
     set_debug(Req),
@@ -384,26 +395,38 @@ init(Paths, CowReq, Env, NkPort) ->
     Res = ?CALL_SRV(SrvId, request, [Method, Paths, Req, UserState]),
     ?DEBUG("request processing time: ~pusecs", [nklib_util:l_timestamp()-Start], Req),
     case Res of
-        {http, Code, Hds, Body, #{cowboy_req:=CowReq2}} ->
+        {http, Code, Hds, Body, #{span:=Span3, cowboy_req:=CowReq2}} ->
             ?DEBUG("replying '~p' (~p) ~s", [Code, Hds, Body], Req),
+            Span4 = nkserver_ot:log(Span3, {"successful response (~p)", [Code]}),
+            nkserver_ot:finish(Span4),
             {ok, nkpacket_cowboy:reply(Code, Hds, Body, CowReq2), Env};
-        {stop, #{cowboy_req:=CowReq2}} ->
+        {stop, #{span:=Span3, cowboy_req:=CowReq2}} ->
             ?DEBUG("replying stream stop", [], Req),
+            Span4 = nkserver_ot:log(Span3, "stop response"),
+            nkserver_ot:finish(Span4),
             {ok, CowReq2, Env};
         {redirect, Path3} ->
+            Span3 = nkserver_ot:log(Span2, {"redirected to: ~s", [Path3]}),
+            nkserver_ot:finish(Span3),
             {redirect, Path3};
         {cowboy_static, Opts} ->
             % @see cowboy_static:opts()
             ?DEBUG("replying cowboy_static (~p)", [Opts], Req),
+            Span3 = nkserver_ot:log(Span2, <<"redirected to cowboy_static">>),
+            nkserver_ot:finish(Span3),
             {cowboy_static, Opts};
         {cowboy_rest, Module, State} ->
             % @see
             ?DEBUG("replying cowboy_rest '~p'", [Module], Req),
+            Span3 = nkserver_ot:log(Span2, <<"redirected to cowboy_rest">>),
+            nkserver_ot:finish(Span3),
             {cowboy_rest, Module, State};
         continue ->
             ?DEBUG("replying 'continue'", [], Req),
             Reply = nkpacket_cowboy:reply(404, #{},
                         <<"NkSERVER REST resource not found">>, CowReq),
+            Span3 = nkserver_ot:log(Span2, <<"resource not found">>),
+            nkserver_ot:finish(Span3),
             {ok, Reply, Env}
     end.
 

@@ -56,7 +56,7 @@ msg(_)   		                    -> continue.
 %% ===================================================================
 
 -type user_state() :: nkrest:user_state().
--type continue() :: nkserver_callbacks:continue().
+-type continue() :: sipstorm_sms_actors_callbacks:continue().
 -type id() :: nkserver:module_id().
 -type http_method() :: nkrest_http:method().
 -type http_path() :: nkrest_http:path().
