@@ -25,7 +25,7 @@
 %%-define(WS, "wss://127.0.0.1:9010/ws").
 %%-define(HTTP, "https://127.0.0.1:9010/rpc/api").
 
--include_lib("nkserver/include/nkserver_module.hrl").
+-include_lib("nkserver/include/nkserver_callback.hrl").
 
 -export([start/0, stop/0, test1/0, test2/0, test3/0]).
 -export([request/4, ws_frame/2]).
