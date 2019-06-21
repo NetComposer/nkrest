@@ -344,9 +344,12 @@ reply_json({ok, Data}, _Req) ->
 
 reply_json({error, Error}, #{srv:=SrvId}) ->
     Hds = #{<<"Content-Tytpe">> => <<"application/json">>},
-    {Code, Txt} = nkserver_msg:msg(SrvId, Error),
-    Body = nklib_json:encode(#{result=>error, data=>#{code=>Code, error=>Txt}}),
-    {http, 200, Hds, Body}.
+    StatusMap = nkserver_status:status(SrvId, Error),
+    Code = maps:get(status, StatusMap),
+    Info = maps:get(info, StatusMap, <<>>),
+    Code = maps:get(code, StatusMap, 200),
+    Body = nklib_json:encode(#{result=>error, data=>#{code=>Code, error=>Info}}),
+    {http, Code, Hds, Body}.
 
 
 
@@ -392,7 +395,7 @@ init(Paths, CowReq, Env, NkPort) ->
     },
     set_debug(Req),
     ?DEBUG("received '~p' (~s) from ~s", [Method, Paths, Peer], Req),
-    Res = ?CALL_SRV(SrvId, request, [Method, Paths, Req, UserState]),
+    Res = ?CALL_SRV(SrvId, http_request, [Method, Paths, Req, UserState]),
     ?DEBUG("request processing time: ~pusecs", [nklib_util:l_timestamp()-Start], Req),
     case Res of
         {http, Code, Hds, Body, #{span:=Span3, cowboy_req:=CowReq2}} ->

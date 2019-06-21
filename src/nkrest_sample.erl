@@ -28,7 +28,7 @@
 -include_lib("nkserver/include/nkserver_callback.hrl").
 
 -export([start/0, stop/0, test1/0, test2/0, test3/0]).
--export([request/4, ws_frame/2]).
+-export([http_request/4, ws_frame/2]).
 
 
 -compile(export_all).
@@ -122,24 +122,24 @@ test3() ->
 %% ===================================================================
 
 % Redirect .../test1/
-request(<<"GET">>, [<<>>], _Req, _State) ->
+http_request(<<"GET">>, [<<>>], _Req, _State) ->
     {redirect, "/index.html"};
 
 % Redirect .../test1
-request(<<"GET">>, [], _Req, _State) ->
+http_request(<<"GET">>, [], _Req, _State) ->
     {redirect, "/index.html"};
 
-request(<<"GET">>, _Paths, _Req, _State) ->
+http_request(<<"GET">>, _Paths, _Req, _State) ->
     lager:error("NKLOG STATIC ~p", [_Paths]),
     {cowboy_static, {priv_dir, nkrest, "/www"}};
 
-request(<<"POST">>, [<<"test-a">>], #{content_type:=CT}=Req, _State) ->
+http_request(<<"POST">>, [<<"test-a">>], #{content_type:=CT}=Req, _State) ->
     {ok, Body, Req2} = nkrest_http:get_body(Req, #{parse=>true}),
     Qs = nkrest_http:get_qs(Req),
     Reply = nklib_json:encode(#{qs=>maps:from_list(Qs), ct=>CT, body=>Body}),
     {http, 200, #{<<"header1">> => 1}, Reply, Req2};
 
-request(_Method, _Path, _Req, _State) ->
+http_request(_Method, _Path, _Req, _State) ->
     lager:error("NKLOG OTHER"),
     continue.
 

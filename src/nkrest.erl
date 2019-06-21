@@ -47,7 +47,7 @@
     {ok, pid()} | {error, term()}.
 
 start_link(Id, Config) ->
-    nkserver:start_link(?PACKAGE_CLASS_REST, Id, Config).
+    nkserver:start_link(nkrest, Id, Config).
 
 
 %% @doc Retrieves a service as a supervisor child specification
@@ -55,7 +55,7 @@ start_link(Id, Config) ->
     {ok, supervisor:child_spec()} | {error, term()}.
 
 get_sup_spec(Id, Config) ->
-    nkserver:get_sup_spec(?PACKAGE_CLASS_REST, Id, Config).
+    nkserver:get_sup_spec(nkrest, Id, Config).
 
 
 stop(Id) ->

@@ -39,7 +39,7 @@ plugin_deps() ->
 
 
 %% @doc
-plugin_config(SrvId, Config, #{class:=?PACKAGE_CLASS_REST}=Service) ->
+plugin_config(SrvId, Config, #{class:=nkrest}=Service) ->
     Syntax = #{
         url => binary,
         opts => nkpacket_syntax:safe_syntax(),
@@ -115,7 +115,7 @@ get_listen(SrvId, #{url:=Url}=Config, _Service) ->
             Debug = maps:get(debug, Config, []),
             Opts = ConfigOpts#{
                 id => {nkrest, SrvId},
-                class => {?PACKAGE_CLASS_REST, SrvId},
+                class => {nkrest, SrvId},
                 debug => lists:member(nkpacket, Debug),
                 get_headers => [<<"user-agent">>],
                 user_state => maps:get(user_state, Config, undefined)

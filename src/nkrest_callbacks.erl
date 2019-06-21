@@ -21,8 +21,8 @@
 %% @doc Default plugin callbacks
 -module(nkrest_callbacks).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
--export([msg/1]).
--export([request/4]).
+-export([status/1]).
+-export([http_request/4]).
 -export([ws_init/3, ws_frame/2, ws_handle_call/3, ws_handle_cast/2, ws_handle_info/2,
          ws_terminate/2]).
 
@@ -48,7 +48,7 @@
 %% Msg Callbacks
 %% ===================================================================
 
-msg(_)   		                    -> continue.
+status(_)   		                    -> continue.
 
 
 %% ===================================================================
@@ -66,13 +66,13 @@ msg(_)   		                    -> continue.
 
 
 %% @doc called when a new http request has been received
--spec request(http_method(), http_path(), http_req(), user_state()) ->
+-spec http_request(http_method(), http_path(), http_req(), user_state()) ->
     http_reply() |
     {redirect, Path::binary(), http_req()} |
     {cowboy_static, cowboy_static:opts()} |
     {cowboy_rest, Callback::module(), State::term()}.
 
-request(Method, Path, #{srv:=SrvId}=Req, _State) ->
+http_request(Method, Path, #{srv:=SrvId}=Req, _State) ->
     #{peer:=Peer} = Req,
     ?LLOG(debug, "path not found (~p, ~s): ~p from ~s", [SrvId, Method, Path, Peer]),
     {http, 404, [], <<"NkSERVER REST: Path Not Found">>, Req}.

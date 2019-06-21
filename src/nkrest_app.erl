@@ -52,7 +52,6 @@ start(_Type, _Args) ->
             {ok, Pid} = nkrest_sup:start_link(),
             {ok, Vsn} = application:get_key(nkserver, vsn),
             lager:info("NkSERVER REST v~s has started.", [Vsn]),
-            nkserver_util:register_package_class(<<"Rest">>, nkrest),
             {ok, Pid};
         {error, Error} ->
             lager:error("Error parsing config: ~p", [Error]),
