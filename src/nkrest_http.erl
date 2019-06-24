@@ -396,7 +396,7 @@ init(Paths, CowReq, Env, NkPort) ->
     ?DEBUG("request processing time: ~pusecs", [nklib_util:l_timestamp()-Start], Req),
     case Res of
         {http, Code, Hds, Body, #{span:=Span3, cowboy_req:=CowReq2}} ->
-            ?DEBUG("replying '~p' (~p) ~s", [Code, Hds, Body], Req),
+            ?DEBUG("replying '~p' (~p)", [Code, Hds], Req),
             Span4 = nkserver_ot:log(Span3, {"successful response (~p)", [Code]}),
             nkserver_ot:finish(Span4),
             {ok, nkpacket_cowboy:reply(Code, Hds, Body, CowReq2), Env};
