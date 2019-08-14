@@ -39,6 +39,13 @@ plugin_deps() ->
 
 
 %% @doc
+%% Config for letsencrypt:
+%% opts => #{
+%%      tls_keyfile => "/etc/letsencrypt/archive/.../privkey.pem",
+%%      tls_cacertfile => "/etc/letsencrypt/archive/.../chain.pem",
+%%      tls_certfile => "/etc/letsencrypt/archive/.../cert.pem"
+%% }
+
 plugin_config(SrvId, Config, #{class:=nkrest}=Service) ->
     Syntax = #{
         url => binary,
