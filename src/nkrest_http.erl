@@ -342,14 +342,27 @@ reply_json({ok, Data}, _Req) ->
     Body = nklib_json:encode(Data),
     {http, 200, Hds, Body};
 
-reply_json({error, Error}, #{srv:=SrvId}) ->
+reply_json({status, #{status:=Result}=Status}, _Req) ->
     Hds = #{<<"Content-Tytpe">> => <<"application/json">>},
-    StatusMap = nkserver_status:status(SrvId, Error),
-    Code = maps:get(status, StatusMap),
-    Info = maps:get(info, StatusMap, <<>>),
-    Code = maps:get(code, StatusMap, 200),
-    Body = nklib_json:encode(#{result=>error, data=>#{code=>Code, error=>Info}}),
-    {http, Code, Hds, Body}.
+    Code = maps:get(code, Status, 200),
+    Info = maps:get(info, Status, <<>>),
+    Body = nklib_json:encode(#{result=>status, data=>#{status=>Result, code=>Code, info=>Info}}),
+    {http, Code, Hds, Body};
+
+reply_json({status, Status}, #{srv:=SrvId}=Req) ->
+    #{status:=_} = Error2 = nkserver_status:status(SrvId, Status),
+    reply_json({status, Error2}, Req);
+
+reply_json({error, #{status:=Error}=Status}, _Req) ->
+    Hds = #{<<"Content-Tytpe">> => <<"application/json">>},
+    Code = maps:get(code, Status, 500),
+    Info = maps:get(info, Status, <<>>),
+    Body = nklib_json:encode(#{result=>error, data=>#{error=>Error, code=>Code, info=>Info}}),
+    {http, Code, Hds, Body};
+
+reply_json({error, Error}, #{srv:=SrvId}=Req) ->
+    #{status:=_} = Error2 = nkserver_status:status(SrvId, Error),
+    reply_json({error, Error2}, Req).
 
 
 
