@@ -337,28 +337,28 @@ stream_stop(#{cowboy_req:=CowReq}) ->
 
 
 %% @doc
-reply_json({ok, Data}, _Req) ->
+reply_json({ok, Data}, Req) ->
     Hds = #{<<"Content-Tytpe">> => <<"application/json">>},
     Body = nklib_json:encode(Data),
-    {http, 200, Hds, Body};
+    {http, 200, Hds, Body, Req};
 
-reply_json({status, #{status:=Result}=Status}, _Req) ->
+reply_json({status, #{status:=Result}=Status}, Req) ->
     Hds = #{<<"Content-Tytpe">> => <<"application/json">>},
     Code = maps:get(code, Status, 200),
     Info = maps:get(info, Status, <<>>),
     Body = nklib_json:encode(#{result=>status, data=>#{status=>Result, code=>Code, info=>Info}}),
-    {http, Code, Hds, Body};
+    {http, Code, Hds, Body, Req};
 
 reply_json({status, Status}, #{srv:=SrvId}=Req) ->
     #{status:=_} = Error2 = nkserver_status:status(SrvId, Status),
     reply_json({status, Error2}, Req);
 
-reply_json({error, #{status:=Error}=Status}, _Req) ->
+reply_json({error, #{status:=Error}=Status}, Req) ->
     Hds = #{<<"Content-Tytpe">> => <<"application/json">>},
     Code = maps:get(code, Status, 500),
     Info = maps:get(info, Status, <<>>),
     Body = nklib_json:encode(#{result=>error, data=>#{error=>Error, code=>Code, info=>Info}}),
-    {http, Code, Hds, Body};
+    {http, Code, Hds, Body, Req};
 
 reply_json({error, Error}, #{srv:=SrvId}=Req) ->
     #{status:=_} = Error2 = nkserver_status:status(SrvId, Error),
