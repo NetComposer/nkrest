@@ -199,6 +199,17 @@ get_body_parse(<<"application/yaml", _/binary>>, Body, Req, Opts) when is_binary
             {error, invalid_yaml}
     end;
 
+get_body_parse(<<"text/csv", _/binary>>, Body, Req, _Opts) when is_binary(Body) ->
+    case catch nklib_parse_csv:csv(Body) of
+        {'EXIT', _} ->
+            {error, invalid_csv};
+        {ok, List} ->
+            {ok, List, Req};
+        Other ->
+            lager:error("NkREST invalid CSV ~p", [Other]),
+            {error, invalid_csv}
+    end;
+
 get_body_parse(_, Body, Req, _Opts) ->
     {ok, Body, Req}.
 
