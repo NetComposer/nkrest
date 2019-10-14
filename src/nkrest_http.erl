@@ -20,7 +20,7 @@
 
 %% @doc
 -module(nkrest_http).
--export([get_headers/1, get_qs/1, get_basic_auth/1, get_ct/1]).
+-export([get_headers/1, get_qs/1, get_basic_auth/1, get_ct/1, get_peer/1]).
 -export([get_accept/1, get_full_path/1, get_external_url/1]).
 -export([get_body/2, iter_body/4]).
 -export([stream_start/3, stream_body/2, stream_stop/1]).
@@ -128,6 +128,14 @@ get_ct(#{cowboy_req:=CowReq}) ->
 
 get_accept(#{cowboy_req:=CowReq}) ->
     cowboy_req:parse_header(<<"accept">>, CowReq).
+
+
+%% @doc
+-spec get_peer(req()) ->
+    {inet:ip_addr(), inet:port_number()}.
+
+get_peer(#{cowboy_req:=CowReq}) ->
+    cowboy_req:peer(CowReq).
 
 
 %% @doc
