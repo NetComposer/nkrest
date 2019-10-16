@@ -30,17 +30,6 @@
 
 -define(MAX_BODY, 10000000).
 
-
--define(DEBUG(Txt, Args, State),
-    case erlang:get(nkrest_debug) of
-        true -> ?LLOG(debug, Txt, Args, State);
-        _ -> ok
-    end).
-
--define(LLOG(Type, Txt, Args, Req),
-    lager:Type("NkSERVER REST HTTP (~s, ~s) "++Txt,
-               [maps:get(srv, Req), maps:get(peer, Req)|Args])).
-
 -include_lib("nkserver/include/nkserver.hrl").
 -include_lib("nkserver/include/nkserver_trace.hrl").
 -include_lib("nkpacket/include/nkpacket.hrl").
@@ -405,24 +394,19 @@ init(Paths, CowReq, Env, NkPort) ->
         (to_bin(Port))/binary
     >>,
     Opts = #{
-        base_txt => "NkREST HTTP (~s, ~s) ",
+        base_txt => "NkREST HTTP (~s, ~s)",
         base_args => [SrvId, Peer],
         base_audit => #{group => nkrest}
     },
     nkserver_trace:start(SrvId, ?MODULE, SpanName,
-                       fun() -> do_init(Paths, CowReq, Env, NkPort) end, Opts).
+                       fun() -> do_init(SrvId, Peer, Paths, CowReq, Env, NkPort) end, Opts).
 
 
 %% @private
-do_init(Paths, CowReq, Env, NkPort) ->
+do_init(SrvId, Peer, Paths, CowReq, Env, NkPort) ->
     Method = cowboy_req:method(CowReq),
     FullPath = cowboy_req:path(CowReq),
     Start = nklib_util:l_timestamp(),
-    {Ip, Port} = cowboy_req:peer(CowReq),
-    Peer = <<
-        (nklib_util:to_host(Ip))/binary, ":",
-        (to_bin(Port))/binary
-    >>,
     {ok, ExtUrl} = nkpacket:get_external_url(NkPort),
     {ok, UserState} = nkpacket:get_user_state(NkPort),
     CT = cowboy_req:header(<<"content-type">>, CowReq),
@@ -433,7 +417,6 @@ do_init(Paths, CowReq, Env, NkPort) ->
         <<"peer">> => Peer,
         <<"content_type">> => CT
     }),
-    {ok, _Class, {nkrest, SrvId}} = nkpacket:get_id(NkPort),
     Req = #{
         srv => SrvId,
         start => Start,
