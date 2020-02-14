@@ -424,7 +424,6 @@ do_init(SrvId, Peer, Paths, CowReq, Env, NkPort) ->
         peer => Peer,
         external_url => ExtUrl,
         content_type => CT,
-        ot_span_id => ?MODULE,
         cowboy_req => CowReq
     },
     case ?CALL_SRV(SrvId, http_request, [Method, Paths, Req, UserState])  of
