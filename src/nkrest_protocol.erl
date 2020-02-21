@@ -27,17 +27,7 @@
 -export([conn_init/1, conn_encode/2, conn_parse/3, conn_handle_call/4,
          conn_handle_cast/3, conn_handle_info/3, conn_stop/3]).
 -export([http_init/4]).
-
--define(DEBUG(Txt, Args, State),
-    case erlang:get(nkrest_debug) of
-        true -> ?LLOG(debug, Txt, Args, State);
-        _ -> ok
-    end).
-
--define(LLOG(Type, Txt, Args, State),
-    lager:Type("NkSERVER REST (~s) (~s) "++Txt,
-               [State#state.srv, State#state.remote|Args])).
-
+-import(nkserver_trace, [trace/1, trace/2, log/3]).
 
 -include_lib("nkserver/include/nkserver.hrl").
 
@@ -92,7 +82,11 @@ stop(Pid) ->
 
 -record(state, {
     srv :: nkserver:id(),
+    local :: binary(),
+    local_port :: integer(),
     remote :: binary(),
+    remote_port :: integer(),
+    transport :: atom(),
     user_state = #{} :: map()
 }).
 
@@ -102,11 +96,29 @@ stop(Pid) ->
 
 conn_init(NkPort) ->
     {ok, _Class, {nkrest, SrvId}} = nkpacket:get_id(NkPort),
-    {ok, Remote} = nkpacket:get_remote_bin(NkPort),
-    State = #state{srv=SrvId, remote=Remote},
-    set_debug(NkPort, State),
-    ?DEBUG("new connection (~s, ~p)", [Remote, self()], State),
+    {ok, {_, _, LocalIp, LocalPort}} = nkpacket:get_local(NkPort),
+    {ok, {_Proto, Transp, RemIp, RemPort}} = nkpacket:get_remote(NkPort),
+    Local = nklib_util:to_host(LocalIp),
+    Remote = nklib_util:to_host(RemIp),
+    State = #state{
+        srv = SrvId,
+        local = Local,
+        local_port = LocalPort,
+        transport = Transp,
+        remote = Remote,
+        remote_port = RemPort
+    },
+    SpanOpts = #{
+        local => Local,
+        local_port => LocalPort,
+        remote => Remote,
+        remote_port => RemPort,
+        transport => Transp
+    },
+    nkserver_trace:new_span(SrvId, {nkrest, connection}, infinity, SpanOpts),
+    log(info, "new connection (~s, ~p)", [Remote, self()]),
     {ok, State2} = handle(ws_init, [SrvId, NkPort], State),
+    trace("connection initialized"),
     {ok, State2}.
 
 
@@ -115,12 +127,15 @@ conn_init(NkPort) ->
     {ok, #state{}} | {stop, term(), #state{}}.
 
 conn_parse(close, _NkPort, State) ->
+    trace("connection closed"),
     {ok, State};
 
 conn_parse({text, Text}, NkPort, State) ->
+    log(debug, "received text: ~p", [Text]),
     call_rest_frame({text, Text}, NkPort, State);
 
 conn_parse({binary, Bin}, NkPort, State) ->
+    log(debug, "received bin: ~p", [Bin]),
     call_rest_frame({binary, Bin}, NkPort, State).
 
 
@@ -205,6 +220,7 @@ http_init(Paths, Req, Env, NkPort) ->
 
 %% @private
 call_rest_frame(Frame, NkPort, #state{srv=SrvId, user_state=UserState}=State) ->
+    trace("calling ws_frame"),
     case ?CALL_SRV(SrvId, ws_frame, [Frame, UserState]) of
         {reply, {text, Text}, UserState2} ->
             do_send({text, Text}, NkPort, State#state{user_state=UserState2});
@@ -218,20 +234,22 @@ call_rest_frame(Frame, NkPort, #state{srv=SrvId, user_state=UserState}=State) ->
     end.
 
 
-%% @private
-set_debug(NkPort, State) ->
-    Debug = nkpacket:get_debug(NkPort) == true,
-    put(nkrest_debug, Debug),
-    ?DEBUG("debug system activated", [], State).
+%%%% @private
+%%set_debug(NkPort, State) ->
+%%    Debug = nkpacket:get_debug(NkPort) == true,
+%%    put(nkrest_debug, Debug),
+%%    ?DEBUG("debug system activated", [], State).
 
 
 %% @private
 do_send(Msg, NkPort, State) ->
+    trace("sending reply"),
+    log(debug, "reply data: ~p", [Msg]),
     case nkpacket_connection:send(NkPort, Msg) of
         ok ->
             {ok, State};
         Other ->
-            ?DEBUG("connection send error: ~p", [Other], State),
+            log(notice, "connection send error: ~p", [Other]),
             {stop, normal, State}
     end.
 

@@ -27,7 +27,7 @@
 -export([reply_json/2]).
 -export([init/4, terminate/3]).
 -export_type([method/0, reply/0, code/0, headers/0, body/0, req/0, path/0, http_qs/0]).
-
+-import(nkserver_trace, [trace/1, trace/2, log/3]).
 -define(MAX_BODY, 10000000).
 
 -include_lib("nkserver/include/nkserver.hrl").
@@ -387,73 +387,51 @@ init(Paths, CowReq, Env, NkPort) ->
     Method = cowboy_req:method(CowReq),
     FullPath = cowboy_req:path(CowReq),
     {ok, _Class, {nkrest, SrvId}} = nkpacket:get_id(NkPort),
-    SpanName = <<"NkREST ", Method/binary, " ", FullPath/binary>>,
     {Ip, Port} = cowboy_req:peer(CowReq),
-    Peer = <<
-        (nklib_util:to_host(Ip))/binary, ":",
-        (to_bin(Port))/binary
-    >>,
-    _Opts = #{
-        base_txt => "NkREST HTTP (~s, ~s)",
-        base_args => [SrvId, Peer],
-        base_audit => #{group => nkrest}
+    CT = cowboy_req:header(<<"content-type">>, CowReq),
+    SpanOpts = #{
+        method => Method,
+        path => FullPath,
+        remote => nklib_util:to_host(Ip),
+        remote_port => Port,
+        content_type => CT
     },
-    do_init(SrvId, Peer, Paths, CowReq, Env, NkPort).
+    Fun = fun() -> do_init(SrvId, Paths, SpanOpts, CowReq, Env, NkPort) end,
+    nkserver_trace:new_span(SrvId, {nkrest, request}, Fun, SpanOpts).
 
 
 %% @private
-do_init(SrvId, Peer, Paths, CowReq, Env, NkPort) ->
-    Method = cowboy_req:method(CowReq),
-    FullPath = cowboy_req:path(CowReq),
-    Start = nklib_util:l_timestamp(),
+do_init(SrvId, Paths, SpanOpts, CowReq, Env, NkPort) ->
     {ok, ExtUrl} = nkpacket:get_external_url(NkPort),
     {ok, UserState} = nkpacket:get_user_state(NkPort),
-    CT = cowboy_req:header(<<"content-type">>, CowReq),
-%%    ?INFO("received '~s' (~s) from ~s", [Method, Paths, Peer]),
-%%    ?TAGS(#{
-%%        <<"method">> => Method,
-%%        <<"path">> => FullPath,
-%%        <<"peer">> => Peer,
-%%        <<"content_type">> => CT
-%%    }),
-    Req = #{
+    Req = SpanOpts#{
         srv => SrvId,
-        start => Start,
-        method => Method,
         path => Paths,
-        peer => Peer,
         external_url => ExtUrl,
-        content_type => CT,
         cowboy_req => CowReq
     },
+    trace("calling request"),
+    #{method:=Method} = SpanOpts,
     case ?CALL_SRV(SrvId, http_request, [Method, Paths, Req, UserState])  of
         {http, Code, Hds, Body, #{cowboy_req:=CowReq2}} ->
-%%            ?INFO("successful response (~p)", [Code]),
-            Time = nklib_util:l_timestamp()-Start,
-%%            ?TRACE(#{type=>response, msg=>success, data=>#{code=>Code, headers=>Hds, time=>Time}}),
-%%            ?DEBUG("replying '~p' (~p) ~s", [Code, Hds, Body]),
+            trace("processing HTTP response: ~p", [Code]),
+            log(debug, "http response: ~p ~p", [Hds, Body]),
             {ok, nkpacket_cowboy:reply(Code, Hds, Body, CowReq2), Env};
         {stop, #{cowboy_req:=CowReq2}} ->
-%%            ?INFO("stop response"),
-%%            ?TRACE(#{type=>response, msg=>stop}),
             {ok, CowReq2, Env};
         {redirect, Path3} ->
-%%            ?INFO("redirected to: ~s", [Path3]),
-%%            ?TRACE(#{type=>response, msg=>redirect, data=>#{path=>Path3}}),
+            trace("redirected: ~s", [Path3]),
             {redirect, Path3};
         {cowboy_static, Opts} ->
             % @see cowboy_static:opts()
-%%            ?INFO("redirected to cowboy_static"),
-%%            ?TRACE(#{type=>response, msg=>redirect_static, data=>#{opts=>Opts}}),
+            trace("redirected to cowboy_static"),
             {cowboy_static, Opts};
         {cowboy_rest, Module, State} ->
             % @see
-%%            ?INFO("redirected to cowboy_resr"),
-%%            ?TRACE(#{type=>response, msg=>redirect_rest, data=>#{module=>Module}}),
+            trace("redirected to cowboy_rest"),
             {cowboy_rest, Module, State};
         continue ->
-%%            ?INFO("no processing"),
-%%            ?TRACE(#{type=>response, msg=>not_found}),
+            trace("no processing"),
             Reply = nkpacket_cowboy:reply(404, #{},
                         <<"NkSERVER REST resource not found">>, CowReq),
             {ok, Reply, Env}
@@ -469,6 +447,6 @@ terminate(_Reason, _Req, _Opts) ->
 %% Internal
 %% ===================================================================
 
-%% @private
-to_bin(Term) when is_binary(Term) -> Term;
-to_bin(Term) -> nklib_util:to_binary(Term).
+%%%% @private
+%%to_bin(Term) when is_binary(Term) -> Term;
+%%to_bin(Term) -> nklib_util:to_binary(Term).
