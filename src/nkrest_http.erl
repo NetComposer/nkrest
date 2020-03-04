@@ -27,7 +27,7 @@
 -export([reply_json/2]).
 -export([init/4, terminate/3]).
 -export_type([method/0, reply/0, code/0, headers/0, body/0, req/0, path/0, http_qs/0]).
--import(nkserver_trace, [trace/1, trace/2, log/3]).
+-import(nkserver_trace, [trace/1, trace/2, log/2, log/3]).
 -define(MAX_BODY, 10000000).
 
 -include_lib("nkserver/include/nkserver.hrl").
@@ -410,28 +410,27 @@ do_init(SrvId, Paths, SpanOpts, CowReq, Env, NkPort) ->
         external_url => ExtUrl,
         cowboy_req => CowReq
     },
-    trace("calling request"),
+    trace("calling http_request"),
     #{method:=Method} = SpanOpts,
     case ?CALL_SRV(SrvId, http_request, [Method, Paths, Req, UserState])  of
         {http, Code, Hds, Body, #{cowboy_req:=CowReq2}} ->
-            trace("processing HTTP response: ~p", [Code]),
             log(debug, "http response: ~p ~p", [Hds, Body]),
             {ok, nkpacket_cowboy:reply(Code, Hds, Body, CowReq2), Env};
         {stop, #{cowboy_req:=CowReq2}} ->
             {ok, CowReq2, Env};
         {redirect, Path3} ->
-            trace("redirected: ~s", [Path3]),
+            log(debug, "redirected: ~s", [Path3]),
             {redirect, Path3};
         {cowboy_static, Opts} ->
             % @see cowboy_static:opts()
-            trace("redirected to cowboy_static"),
+            log(debug, "redirected to cowboy_static"),
             {cowboy_static, Opts};
         {cowboy_rest, Module, State} ->
             % @see
-            trace("redirected to cowboy_rest"),
+            log(debug, "redirected to cowboy_rest"),
             {cowboy_rest, Module, State};
         continue ->
-            trace("no processing"),
+            log(debug, "no processing"),
             Reply = nkpacket_cowboy:reply(404, #{},
                         <<"NkSERVER REST resource not found">>, CowReq),
             {ok, Reply, Env}

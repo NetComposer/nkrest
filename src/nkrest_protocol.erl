@@ -27,7 +27,7 @@
 -export([conn_init/1, conn_encode/2, conn_parse/3, conn_handle_call/4,
          conn_handle_cast/3, conn_handle_info/3, conn_stop/3]).
 -export([http_init/4]).
--import(nkserver_trace, [trace/1, trace/2, log/3]).
+-import(nkserver_trace, [trace/1, trace/2, log/2, log/3]).
 
 -include_lib("nkserver/include/nkserver.hrl").
 
@@ -118,7 +118,7 @@ conn_init(NkPort) ->
     nkserver_trace:new_span(SrvId, {nkrest, connection}, infinity, SpanOpts),
     log(info, "new connection (~s, ~p)", [Remote, self()]),
     {ok, State2} = handle(ws_init, [SrvId, NkPort], State),
-    trace("connection initialized"),
+    log(debug, "connection initialized"),
     {ok, State2}.
 
 
@@ -127,7 +127,7 @@ conn_init(NkPort) ->
     {ok, #state{}} | {stop, term(), #state{}}.
 
 conn_parse(close, _NkPort, State) ->
-    trace("connection closed"),
+    log(debug, "connection closed"),
     {ok, State};
 
 conn_parse({text, Text}, NkPort, State) ->
